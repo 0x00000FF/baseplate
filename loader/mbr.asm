@@ -100,7 +100,6 @@ func_load_vbr:
     mov si, _STR_MSG_LDRVBR
     call func_print_str
 
-
     ; load from dl
     ; cl is already loaded in func_chk_part
     ; with int 0x13, ah = 0x02
@@ -112,7 +111,6 @@ func_load_vbr:
 
     mov WORD[_VAR_VBR_DAP + 0x4], 0x7C00 ; Buffer
 
-    ; TODO: seems stuck here
     int 0x13
     jc  func_load_vbr.err
 
