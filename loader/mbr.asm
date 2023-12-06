@@ -172,7 +172,7 @@ TIMES 446 - ($ - $$) db 0x00
 
 __PARTITION_TABLE:
     __ENTRY1:
-    db 0x00             ; Status (Active)
+    db 0x80             ; Status (Active)
     db 0x00, 0x00, 0x00 ; CHS Start
     db 0x00,            ; Type
     db 0x00, 0x00, 0x00 ; CHS End
