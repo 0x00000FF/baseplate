@@ -1,40 +1,49 @@
+; Realmode MBR for PFS VBR
+; Copyright (c) 2023 0x00000FF a.k.a. P.Knowledge
+
 [BITS 16]
-[ORG 0x7A00]
 
-; pause any interrups
-cli
+jmp 0x07C0:_start
 
-; relocate mbr
-mov si, 0x7C00
-mov di, 0x7A00
-mov cx, 0x0100
+_start:
+    ; pause any interrupts
+    cli
 
-rep movsw
+    ; relocate mbr
+    mov si, 0x7C00
+    mov di, 0x7A00
+    mov cx, 0x0100
 
-; initialize registers
+    rep movsw
 
-mov ax, 0x00
-mov ds, ax
+    ; initialize registers
 
-mov ax, 0x07A0
-mov ss, ax
+    mov ax, 0x07A0
+    mov ds, ax
 
-xor ax, ax
-xor bx, bx
-xor cx, cx
+    mov ax, 0x07A0
+    mov ss, ax
 
-xor si, si
-xor di, di
+    xor ax, ax
+    xor bx, bx
+    xor cx, cx
 
-; start mbr bootcode
-jmp mbr_main
+    xor si, si
+    xor di, di
+
+    ; start mbr bootcode
+    jmp 0x07A0:mbr_main
 
 _REBOOT:
     jmp 0xFFFF:0000h
     hlt
 
 mbr_main:
+    ; Restart interrupts
     sti
+
+    ; Save disk ID
+    mov BYTE[_VAR_DISKID], dl
 
     mov  si, _STR_MSG_START
     call func_print_str
@@ -49,7 +58,7 @@ mbr_main:
     mov  si, _STR_MSG_JUMP
     call func_print_str
 
-    jmp 0:0x7c00
+    jmp 0x07c0:0
 
 func_chk_part:
     push ax
@@ -64,7 +73,9 @@ func_chk_part:
     cmp BYTE[bx], 0x80          ; check partition is active
     jnz func_chk_part.loop.next
 
-    mov al, BYTE[bx + 0x3]      ; set disk sector start
+    mov ax, WORD[bx + 0xA]      ; get partition LBA start address
+    mov WORD[_VAR_VBR_DAP + 0x8], ax
+
     jmp func_chk_part.end
 
     func_chk_part.loop.next:
@@ -89,18 +100,17 @@ func_load_vbr:
     mov si, _STR_MSG_LDRVBR
     call func_print_str
 
+
     ; load from dl
     ; cl is already loaded in func_chk_part
     ; with int 0x13, ah = 0x02
-    mov ah, 0x02
-    mov al, 0x01
-    mov ch, 0x00
-    mov dh, 0x00
+    mov ah, 0x42
+    mov al, 0x01                    ; Read 1 Sector for VBR Bootcode
+    
+    mov si, _VAR_VBR_DAP            ; Disk Address Packet for VBR
+    mov dl, BYTE[_VAR_DISKID]       ; Disk ID
 
-    ; target to 0x07C0:0000
-    mov bx, 0x07C0
-    mov es, bx
-    xor bx, bx
+    mov WORD[_VAR_VBR_DAP + 0x4], 0x7C00 ; Buffer
 
     ; TODO: seems stuck here
     int 0x13
@@ -112,10 +122,6 @@ func_load_vbr:
     mov si, _STR_MSG_VBRERR
     call func_print_str
 
-    hlt
-
-
-func_load_vbr.error_reboot:
     jmp _REBOOT
 
 func_print_str:
@@ -143,10 +149,16 @@ _DBG:
     mov si, _STR_MSG_DEBUG
     call func_print_str
     
-    hlt
+    jmp $
 
 __DATA_VARS:
-    
+    _VAR_DISKID:     db 0x00
+    _VAR_VBR_DAP:               ; Disk Address Packet for VBR
+        db  0x10
+        db  0x00
+        dw  0x0001
+        dd  0x00000000          ; Buffer address (LE)
+        dq  0x0000000000000000  ; Start LBA (LE)
 
 __DATA_STR:
     _STR_MSG_DEBUG:  db  0x0D, 0x0A, "!DEBUG HIT!", 0x0D, 0x0A, 0x00
@@ -163,14 +175,14 @@ TIMES 446 - ($ - $$) db 0x00
 __PARTITION_TABLE:
     __ENTRY1:
     db 0x80             ; Status (Active)
-    db 0x00, 0x00, 0x03 ; CHS Start
+    db 0x00, 0x00, 0x00 ; CHS Start
     db 0x00,            ; Type
-    db 0x00, 0x00, 0x14 ; CHS End
+    db 0x00, 0x00, 0x00 ; CHS End
     
     dw 0x0000
-    dw 0x0000           ; LBA Start
+    dw 0x0002           ; LBA Start
     dw 0x0000
-    dw 0x0000           ; LBA Size (in Sectors)
+    dw 0x0010           ; LBA Size (in Sectors)
 
     _ENTRY2:            ; Empty
     TIMES 16 db 0x00
