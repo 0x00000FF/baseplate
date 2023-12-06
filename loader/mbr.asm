@@ -102,7 +102,7 @@ func_load_vbr:
     mov es, bx
     xor bx, bx
 
-    ; TODO: CF occurs fix needed 
+    ; TODO: seems stuck here
     int 0x13
     jc  func_load_vbr.err
 
@@ -144,6 +144,9 @@ _DBG:
     call func_print_str
     
     hlt
+
+__DATA_VARS:
+    
 
 __DATA_STR:
     _STR_MSG_DEBUG:  db  0x0D, 0x0A, "!DEBUG HIT!", 0x0D, 0x0A, 0x00
