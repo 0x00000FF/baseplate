@@ -94,7 +94,7 @@ func_chk_part:
     mov si, _STR_MSG_NOFACT
     call func_print_str
     
-    hlt
+    jmp $                           ; halt
 
 func_load_vbr:
     mov si, _STR_MSG_LDRVBR
@@ -172,7 +172,7 @@ TIMES 446 - ($ - $$) db 0x00
 
 __PARTITION_TABLE:
     __ENTRY1:
-    db 0x80             ; Status (Active)
+    db 0x00             ; Status (Active)
     db 0x00, 0x00, 0x00 ; CHS Start
     db 0x00,            ; Type
     db 0x00, 0x00, 0x00 ; CHS End
